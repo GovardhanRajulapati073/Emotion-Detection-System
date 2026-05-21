@@ -1,70 +1,214 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Real Time Emotion Detection System</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>AI Emotion Detection System</title>
+
+  <style>
+
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+      font-family:Arial,sans-serif;
+    }
+
+    body{
+      background:#0f172a;
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding:20px;
+      color:white;
+    }
+
+    .container{
+      width:100%;
+      max-width:1000px;
+      background:#1e293b;
+      padding:30px;
+      border-radius:20px;
+      box-shadow:0 0 30px rgba(0,0,0,0.4);
+    }
+
+    h1{
+      text-align:center;
+      margin-bottom:10px;
+      font-size:2.5rem;
+    }
+
+    p{
+      text-align:center;
+      color:#cbd5e1;
+      margin-bottom:25px;
+    }
+
+    .video-container{
+      position:relative;
+      width:100%;
+      border-radius:20px;
+      overflow:hidden;
+      border:3px solid #38bdf8;
+    }
+
+    video{
+      width:100%;
+      display:block;
+    }
+
+    canvas{
+      position:absolute;
+      top:0;
+      left:0;
+    }
+
+    .status{
+      text-align:center;
+      margin-top:20px;
+      font-size:18px;
+      color:#38bdf8;
+    }
+
+  </style>
+
 </head>
+
 <body>
-  <div class="page-shell">
-    <header class="hero">
-      <div class="hero-brand">
-        <div class="brand-mark">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm2.8 14.8a6.4 6.4 0 0 1-5.6 0 .8.8 0 1 1 .8-1.4 4.8 4.8 0 0 0 4 0 .8.8 0 1 1 .8 1.4Zm-6.4-6.8a1.2 1.2 0 1 1 1.2-1.2 1.2 1.2 0 0 1-1.2 1.2Zm5.6 0a1.2 1.2 0 1 1 1.2-1.2 1.2 1.2 0 0 1-1.2 1.2Z" />
-          </svg>
-        </div>
-        <div>
-          <p class="eyebrow">Real Time Emotion Detection</p>
-          <h1>Browser-Based Emotion Detection</h1>
-        </div>
-      </div>
-      <p class="subtitle">A clean live webcam dashboard built for reliable prediction, fast reconnect, and polished interaction.</p>
-    </header>
 
-    <main>
-      <section class="panel">
-        <div class="panel-header">
-          <div class="panel-title">
-            <div class="title-badge">Live preview</div>
-            <p>Watch the webcam feed update in real time with emotion labels and confidence overlays.</p>
-          </div>
-          <div class="status-bar">
-            <span class="status-pill status-loading" id="statusPill">
-              <span class="pill-icon">●</span>
-              Connecting
-            </span>
-            <button id="refreshButton" class="btn secondary">
-              <span class="btn-icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1L8 5l4 4V6a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8Z" /></svg>
-              </span>
-              Retry stream
-            </button>
-          </div>
-        </div>
+<div class="container">
 
-        <div class="video-card">
-          <div class="video-wrapper">
-            <img id="videoStream" src="{{ url_for('video_feed') }}" alt="Live emotion feed">
-            <div class="overlay" id="overlay">
-              <div class="overlay-content">
-                <strong id="overlayTitle">Starting stream...</strong>
-                <p id="overlayMessage">If this takes a while, reconnect your webcam or press Retry.</p>
-              </div>
-            </div>
-          </div>
-        </div>
+  <h1>Real Time Emotion Detection</h1>
 
-        <div class="panel-footer">
-          <div class="footer-copy">
-            <p>For better performance, ensure your webcam is properly connected and the browser has permission to access it.</p>
-          </div>
-        </div>
-      </section>
-    </main>
+  <p>AI Powered Browser Based Emotion Detection System</p>
+
+  <div class="video-container">
+
+    <video id="video" autoplay playsinline></video>
+
+    <canvas id="canvas"></canvas>
+
   </div>
 
-  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <div class="status" id="status">
+    Starting Camera...
+  </div>
+
+</div>
+
+<script>
+
+const video = document.getElementById("video");
+
+const canvas = document.getElementById("canvas");
+
+const ctx = canvas.getContext("2d");
+
+const statusText = document.getElementById("status");
+
+async function startCamera(){
+
+    try{
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video:true,
+            audio:false
+        });
+
+        video.srcObject = stream;
+
+        statusText.innerHTML = "Camera Connected";
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+        statusText.innerHTML = "Camera Permission Denied";
+
+    }
+
+}
+
+startCamera();
+
+video.addEventListener('play', () => {
+
+    setInterval(async () => {
+
+        canvas.width = video.videoWidth;
+
+        canvas.height = video.videoHeight;
+
+        ctx.drawImage(video,0,0);
+
+        const image = canvas.toDataURL('image/jpeg');
+
+        try{
+
+            const response = await fetch('/predict',{
+
+                method:'POST',
+
+                headers:{
+                    'Content-Type':'application/json'
+                },
+
+                body:JSON.stringify({
+                    image:image
+                })
+
+            });
+
+            const result = await response.json();
+
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+
+            ctx.drawImage(video,0,0);
+
+            result.forEach(face => {
+
+                ctx.beginPath();
+
+                ctx.lineWidth = 3;
+
+                ctx.strokeStyle = '#00ff00';
+
+                ctx.rect(face.x, face.y, face.w, face.h);
+
+                ctx.stroke();
+
+                ctx.fillStyle = '#00ff00';
+
+                ctx.font = '20px Arial';
+
+                ctx.fillText(
+                    `${face.emotion} (${face.confidence}%)`,
+                    face.x,
+                    face.y - 10
+                );
+
+            });
+
+        }
+
+        catch(error){
+
+            console.error(error);
+
+        }
+
+    }, 700);
+
+});
+
+</script>
+
 </body>
+
 </html>
